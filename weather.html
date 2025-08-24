@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weather App</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #333;
+      --card-color: #ffffff;
+      --button-bg: #4facfe;
+      --button-hover: #00c6fb;
+    }
+
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #f5f5f5;
+      --card-color: #1e1e1e;
+      --button-bg: #333;
+      --button-hover: #555;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: 0.3s ease;
+    }
+
+    .container {
+      background: var(--card-color);
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      padding: 30px;
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+      animation: fadeIn 0.6s ease-in-out;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 20px;
+    }
+
+    input {
+      padding: 10px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      outline: none;
+      width: 70%;
+      margin-bottom: 15px;
+      font-size: 1rem;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      background: var(--button-bg);
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: 0.3s;
+      margin: 5px;
+    }
+
+    button:hover {
+      background: var(--button-hover);
+    }
+
+    .weather {
+      margin-top: 20px;
+    }
+
+    .weather img {
+      width: 80px;
+      height: 80px;
+    }
+
+    .temp {
+      font-size: 2.5rem;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+
+    .details {
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .forecast {
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px;
+    }
+
+    .forecast-day {
+      background: var(--card-color);
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .forecast-day img {
+      width: 50px;
+      height: 50px;
+    }
+
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(10px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌦 Weather App</h1>
+    <input type="text" id="locationInput" placeholder="Enter city name">
+    <div>
+      <button onclick="getWeather()">Get Weather</button>
+      <button onclick="toggleTheme()">🌙 Toggle Theme</button>
+    </div>
+    <div class="weather" id="weatherResult"></div>
+    <div class="forecast" id="forecastResult"></div>
+  </div>
+
+  <script>
+    const apiKey = "66d9f392c70a425aa4c223340252408";
+
+    // 🌙 Theme toggle
+    function toggleTheme() {
+      document.body.classList.toggle("dark");
+    }
+
+    // 🌍 Auto-detect location
+    window.onload = () => {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            getWeatherByCoords(lat, lon);
+          },
+          () => console.log("Geolocation not allowed")
+        );
+      }
+    };
+
+    // Get weather by city name
+    async function getWeather() {
+      const location = document.getElementById("locationInput").value;
+      if (!location) return alert("Please enter a city");
+      fetchWeather(`q=${location}`);
+    }
+
+    // Get weather by coords
+    function getWeatherByCoords(lat, lon) {
+      fetchWeather(`q=${lat},${lon}`);
+    }
+
+    // Fetch function with forecast
+    async function fetchWeather(query) {
+      const url = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&${query}&days=5&aqi=yes&alerts=no`;
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Location not found");
+        const data = await response.json();
+
+        // Current weather
+        document.getElementById("weatherResult").innerHTML = `
+          <img src="${data.current.condition.icon}" alt="Weather Icon">
+          <div class="temp">${data.current.temp_c}°C</div>
+          <div class="details">
+            <p><strong>Location:</strong> ${data.location.name}, ${data.location.country}</p>
+            <p><strong>Condition:</strong> ${data.current.condition.text}</p>
+            <p><strong>Humidity:</strong> ${data.current.humidity}%</p>
+            <p><strong>Wind:</strong> ${data.current.wind_kph} kph</p>
+            <p><strong>Feels Like:</strong> ${data.current.feelslike_c}°C</p>
+            <p><strong>Rain Chance:</strong> ${data.current.precip_mm > 0 ? "Yes" : "No"} (${data.current.precip_mm} mm)</p>
+          </div>
+        `;
+
+        // 5-day forecast
+        const forecastHTML = data.forecast.forecastday.map(day => `
+          <div class="forecast-day">
+            <p><strong>${new Date(day.date).toLocaleDateString("en-US", { weekday: "short" })}</strong></p>
+            <img src="${day.day.condition.icon}" alt="Forecast Icon">
+            <p>${day.day.avgtemp_c}°C</p>
+            <p>${day.day.condition.text}</p>
+            <p>🌧 ${day.day.daily_chance_of_rain}%</p>
+          </div>
+        `).join("");
+
+        document.getElementById("forecastResult").innerHTML = forecastHTML;
+
+      } catch (error) {
+        document.getElementById("weatherResult").innerHTML = `<p style="color:red;">${error.message}</p>`;
+        document.getElementById("forecastResult").innerHTML = "";
+      }
+    }
+  </script>
+</body>
+</html>
